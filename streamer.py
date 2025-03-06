@@ -3,6 +3,7 @@ import websockets
 from google import genai
 import os
 import json
+from race_chat_handlers import handle_race_client
 
 # Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -82,8 +83,23 @@ async def handle_client(websocket):
 
 async def main():
     try:
-        server = await websockets.serve(handle_client, "localhost", 8765)
+        # Create routes dictionary
+        routes = {
+            "/chat": handle_client,
+            "/race-chat": handle_race_client,
+            "/": handle_client
+        }
+
+        async def route_handler(websocket):
+            path = websocket.request.path
+            if path in routes:
+                await routes[path](websocket)
+            else:
+                await websocket.close(4004, f"Path {path} not found")
+
+        server = await websockets.serve(route_handler, "localhost", 8765)
         print("WebSocket server started on ws://localhost:8765")
+        print("Available endpoints: /, /chat, and /race-chat")
         await server.wait_closed()
     except OSError as e:
         print(f"Failed to start server (port may be in use): {str(e)}")
