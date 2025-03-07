@@ -9,9 +9,11 @@ async def test_websocket():
     async with websockets.connect(uri) as websocket:
         # Create message following the WebSocketMessage interface
         # Tell me a bit about how max throttle usage changed throughout the race
+        # What drivers participaded in this race?
+        # What was max's lap 12 sector 1 time, how does it compare to his other laps?
         message = {
             "type": "fromClient",
-            "content": "Tell me how the weather was during it",
+            "content": "What was max's lap 12 sector 1 time, how does it compare to his other laps?",
             "timestamp": int(time.time() * 1000)  # Current time in milliseconds
         }
         

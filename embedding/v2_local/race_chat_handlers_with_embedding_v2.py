@@ -36,7 +36,7 @@ async def race_stream_response(prompt, queue, loop):
         prompt_embedding = await loop.run_in_executor(None, lambda: model.encode(prompt))
         
         # Search for top-k similar chunks
-        k = 5
+        k = 8
         distances, indices = await loop.run_in_executor(
             None,
             lambda: index.search(np.array([prompt_embedding]).astype('float32'), k)
@@ -47,7 +47,7 @@ async def race_stream_response(prompt, queue, loop):
         context = " ".join(relevant_chunks) if relevant_chunks else "No context available."
         
         # Construct enhanced prompt
-        enhanced_prompt = f"Based on this context: {context}, answer: {prompt}"
+        enhanced_prompt = f"I am giving you context from a 2024 F1 car race. Use it to answer the question. Context: {context}, Question: {prompt}"
         
         # Send to Google API (assuming client is your API client)
         async for chunk in await client.aio.models.generate_content_stream(
