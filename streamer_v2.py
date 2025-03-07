@@ -3,9 +3,8 @@ import websockets
 from google import genai
 import os
 import json
-from race_chat_handlers import handle_race_client
+from embedding.v2_local.race_chat_handlers_with_embedding_v2 import handle_race_client
 
-# Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 async def stream_response(prompt, queue, loop):
@@ -83,10 +82,10 @@ async def handle_client(websocket):
 
 async def main():
     try:
-        # Create routes dictionary
+        # Create routes dictionary with v2 race chat handler
         routes = {
             "/chat": handle_client,
-            "/race-chat": handle_race_client,
+            "/race-chat-v2": handle_race_client,  # Updated path for v2 handler
             "/": handle_client
         }
 
@@ -99,7 +98,7 @@ async def main():
 
         server = await websockets.serve(route_handler, "localhost", 8765)
         print("WebSocket server started on ws://localhost:8765")
-        print("Available endpoints: /, /chat, and /race-chat")
+        print("Available endpoints: /, /chat, and /race-chat-v2")  # Updated endpoint list
         await server.wait_closed()
     except OSError as e:
         print(f"Failed to start server (port may be in use): {str(e)}")
