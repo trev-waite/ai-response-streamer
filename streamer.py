@@ -3,7 +3,7 @@ import websockets
 from google import genai
 import os
 import json
-from race_chat_handlers import handle_race_client
+from race_chat_handlers_less_data import handle_race_client
 
 # Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))

@@ -36,7 +36,7 @@ async def race_stream_response(prompt, queue, loop):
         prompt_embedding = await loop.run_in_executor(None, lambda: model.encode(prompt))
         
         # Search for top-k similar chunks
-        k = 8
+        k = 10 #  Around 60-70,000 tokens
         distances, indices = await loop.run_in_executor(
             None,
             lambda: index.search(np.array([prompt_embedding]).astype('float32'), k)
@@ -46,6 +46,9 @@ async def race_stream_response(prompt, queue, loop):
         relevant_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]
         context = " ".join(relevant_chunks) if relevant_chunks else "No context available."
         
+        print('---------------------------')
+        print(context)
+        print('---------------------------')
         # Construct enhanced prompt
         enhanced_prompt = f"I am giving you context from a 2024 F1 car race. Use it to answer the question. Context: {context}, Question: {prompt}"
         

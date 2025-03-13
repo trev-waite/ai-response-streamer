@@ -4,16 +4,20 @@ import json
 import time
 
 async def test_websocket():
-    uri = "ws://localhost:8765/race-chat-v2"
+    uri = "ws://localhost:8765/race-chat"
     
     async with websockets.connect(uri) as websocket:
         # Create message following the WebSocketMessage interface
         # Tell me a bit about how max throttle usage changed throughout the race
         # What drivers participaded in this race?
         # What was max's lap 12 sector 1 time, how does it compare to his other laps?
+        # Tell me a bit about Oscars race, and why he did how he did
+        # "Did the weather play a factor in the race, and also how did maxs throttle usage change throughout the race"
+        #  What was max verstapans throttle usage on the 5th lap
         message = {
             "type": "fromClient",
-            "content": "What was max's lap 12 sector 1 time, how does it compare to his other laps?",
+            "content": "Tell me a bit about Oscars race, and why he did how he did, and compare his strategy with leclercs",
+            "race": "Hungarian",
             "timestamp": int(time.time() * 1000)  # Current time in milliseconds
         }
         
