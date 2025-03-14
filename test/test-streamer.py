@@ -14,9 +14,10 @@ async def test_websocket():
         # Tell me a bit about Oscars race, and why he did how he did
         # "Did the weather play a factor in the race, and also how did maxs throttle usage change throughout the race"
         #  What was max verstapans throttle usage on the 5th lap
+        # Tell me a bit about Oscars race, and why he did how he did, and compare his strategy with leclercs
         message = {
             "type": "fromClient",
-            "content": "Tell me a bit about Oscars race, and why he did how he did, and compare his strategy with leclercs",
+            "content": "Can you tell me about Piastris throttle usage compared to leclercs",
             "race": "Hungarian",
             "timestamp": int(time.time() * 1000)  # Current time in milliseconds
         }
