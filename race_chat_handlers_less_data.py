@@ -6,12 +6,12 @@ import os
 # Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-async def race_stream_response(prompt, race_name, queue, loop):
+async def race_stream_response(prompt, race_name, queue):
     try:
-        print(f"Processing race chat prompt for {race_name}: {prompt}")
+        print(f"Processing race chat prompt for {race_name}: {prompt}", flush=True)
         
         # Construct the file path based on race name  race_data_Hungarian_2024_Race
-        file_path = f"./race-data/race_data_{race_name}_2024_Race.txt"
+        file_path = f"./race-data/less_data/race_data_{race_name}_2024_Race.txt"
         
         # Upload the race data file
         file = client.files.upload(file=file_path)
@@ -76,9 +76,7 @@ async def race_stream_response(prompt, race_name, queue, loop):
 
 async def handle_race_client(websocket):
     client_id = id(websocket)
-    print(f"New race chat client connected. ID: {client_id}")
-    
-    loop = asyncio.get_running_loop()
+    print(f"New race chat client connected. ID: {client_id}", flush=True)
     
     try:
         while True:
@@ -86,7 +84,7 @@ async def handle_race_client(websocket):
             message_data = json.loads(raw_message)
             
             if message_data.get('type') == 'ping':
-                print("Received ping from race chat client - continuing")
+                print("Received ping from race chat client - continuing", flush=True)
                 continue
             
             content = message_data.get('content')
@@ -95,10 +93,10 @@ async def handle_race_client(websocket):
             if not race_name:
                 raise ValueError("Race name not provided in message")
                 
-            print(f"Received race chat prompt from client {client_id} for race {race_name}: {content}")
+            print(f"Received race chat prompt from client {client_id} for race {race_name}: {content}", flush=True)
             
             queue = asyncio.Queue()
-            await race_stream_response(content, race_name, queue, loop)
+            asyncio.create_task(race_stream_response(content, race_name, queue))
             
             while True:
                 chunk = await queue.get()
@@ -110,12 +108,12 @@ async def handle_race_client(websocket):
                         "timestamp": None
                     }
                     await websocket.send(json.dumps(done_message))
-                    print("Race chat stream completed")
+                    print("Race chat stream completed", flush=True)
                     break
                 await websocket.send(chunk)
 
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON received from race chat client {client_id}: {str(e)}")
+        print(f"Invalid JSON received from race chat client {client_id}: {str(e)}", flush=True)
     except Exception as e:
-        print(f"Unexpected error in race chat handler for client {client_id}: {str(e)}")
+        print(f"Unexpected error in race chat handler for client {client_id}: {str(e)}", flush=True)
         await websocket.close(code=1011, reason=str(e))

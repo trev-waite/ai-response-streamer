@@ -46,9 +46,9 @@ async def race_stream_response(prompt, queue, loop):
         relevant_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]
         context = " ".join(relevant_chunks) if relevant_chunks else "No context available."
         
-        print('---------------------------')
-        print(context)
-        print('---------------------------')
+        print('---------------------------', flush=True)
+        print(context, flush=True)
+        print('---------------------------', flush=True)
         # Construct enhanced prompt
         enhanced_prompt = f"I am giving you context from a 2024 F1 car race. Use it to answer the question. Context: {context}, Question: {prompt}"
         
@@ -72,7 +72,7 @@ async def handle_race_client(websocket):
         websocket: The WebSocket connection object.
     """
     client_id = id(websocket)
-    print(f"New race chat client connected. ID: {client_id}")
+    print(f"New race chat client connected. ID: {client_id}", flush=True)
     
     loop = asyncio.get_running_loop()
     
@@ -83,18 +83,17 @@ async def handle_race_client(websocket):
                 message_data = json.loads(raw_message)
                 
                 if message_data.get('type') == 'ping':
-                    print("Received ping from race chat client - continuing")
+                    print("Received ping from race chat client - continuing", flush=True)
                     continue
                 
                 content = message_data.get('content')
-                print(f"Received race chat prompt from client {client_id}: {content}")
+                print(f"Received race chat prompt from client {client_id}: {content}", flush=True)
             except Exception as e:
-                print(f"Invalid message received from race chat client {client_id}: {str(e)}")
+                print(f"Invalid message received from race chat client {client_id}: {str(e)}", flush=True)
                 continue
 
             queue = asyncio.Queue()
-            # Directly await the async function instead of using run_in_executor
-            await race_stream_response(content, queue, loop)
+            asyncio.create_task(race_stream_response(content, queue, loop))
             
             # Send response chunks to the client
             while True:
