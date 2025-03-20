@@ -57,12 +57,27 @@ async def race_stream_response(prompt, queue, loop):
             model='gemini-2.0-flash',  # Replace with your model
             contents=enhanced_prompt
         ):
-            message = {"type": "fromSocket", "content": chunk.text, "source": "race-chat"}
+            message = {
+                "role": "assistant",
+                "response": chunk.text,
+                "isDone": False,
+                "timestamp": None
+            }
             await queue.put(json.dumps(message))
-        await queue.put(None)
+        await queue.put(json.dumps({
+            "role": "assistant",
+            "response": "done message",
+            "isDone": True,
+            "timestamp": None
+        }))
+        print("Race chat stream completed")
     except Exception as e:
-        await queue.put(json.dumps({"type": "error", "content": str(e)}))
-        await queue.put(None)
+        await queue.put(json.dumps({
+            "role": "error",
+            "response": "Error getting race data response",
+            "isDone": True,
+            "timestamp": None
+        }))
 
 async def handle_race_client(websocket):
     """
@@ -82,32 +97,22 @@ async def handle_race_client(websocket):
             try:
                 message_data = json.loads(raw_message)
                 
-                if message_data.get('type') == 'ping':
+                if message_data.get('role') == 'ping':
                     print("Received ping from race chat client - continuing", flush=True)
                     continue
                 
-                content = message_data.get('content')
-                print(f"Received race chat prompt from client {client_id}: {content}", flush=True)
+                prompt = message_data.get('prompt')
+                print(f"Received race chat prompt from client {client_id}: {prompt}", flush=True)
             except Exception as e:
                 print(f"Invalid message received from race chat client {client_id}: {str(e)}", flush=True)
                 continue
 
             queue = asyncio.Queue()
-            asyncio.create_task(race_stream_response(content, queue, loop))
+            asyncio.create_task(race_stream_response(prompt, queue, loop))
             
             # Send response chunks to the client
             while True:
                 chunk = await queue.get()
-                if chunk is None:
-                    done_message = {
-                        "type": "done",
-                        "content": "",
-                        "source": "race-chat",
-                        "timestamp": None
-                    }
-                    await websocket.send(json.dumps(done_message))
-                    print("Race chat stream completed")
-                    break
                 await websocket.send(chunk)
     
     except json.JSONDecodeError as e:
