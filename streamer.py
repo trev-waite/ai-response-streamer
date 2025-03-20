@@ -42,6 +42,7 @@ async def stream_response(prompt, queue):
             "isDone": True,
             "timestamp": None
         }))
+        await queue.put(None)
         print("Stream completed", flush=True)
     except Exception as e:
         error_message = {
@@ -78,6 +79,8 @@ async def handle_client(websocket):
             
             while True:
                 chunk = await queue.get()
+                if chunk is None:
+                    break
                 print(f"Sending chunk content: {json.loads(chunk).get('response')}", flush=True)  # chunk is already JSON string
                 await websocket.send(chunk)
     

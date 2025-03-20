@@ -84,6 +84,7 @@ async def race_stream_response(prompt, race_name, queue):
             "isDone": True,
             "timestamp": None
         }))
+        await queue.put(None)
         print("Race chat stream completed", flush=True)
     except Exception as e:
         await _send_error_message(queue, "Error getting race data from LLM")
@@ -119,6 +120,8 @@ async def handle_race_client(websocket):
             
             while True:
                 chunk = await queue.get()
+                if chunk is None:
+                    break
                 await websocket.send(chunk)
     
     except json.JSONDecodeError as e:
@@ -128,12 +131,11 @@ async def handle_race_client(websocket):
         print(f"Unexpected error in race chat handler for client {client_id}: {str(e)}", flush=True)
         await websocket.close(code=1011, reason=str(e))
 
-
-async def _send_error_message(queue, errorMessge):
+async def _send_error_message(queue, error_message):
     error_message = {
-            "role": "error",
-            "response": errorMessge,
-            "isDone": True,
-            "timestamp": None
-        }
+        "role": "error",
+        "response": error_message,
+        "isDone": True,
+        "timestamp": None
+    }
     await queue.put(json.dumps(error_message))
