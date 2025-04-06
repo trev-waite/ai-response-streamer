@@ -20,7 +20,7 @@ async def stream_response(prompt, queue, loop):
                 "timestamp": None
             }
             await queue.put(json.dumps(message))
-        await queue.put(None)  # Keep None as termination signal
+        await queue.put(None)
     except Exception as e:
         error_message = {
             "type": "error",
@@ -28,10 +28,10 @@ async def stream_response(prompt, queue, loop):
             "timestamp": None
         }
         await queue.put(json.dumps(error_message))
-        await queue.put(None)  # Keep None as termination signal
+        await queue.put(None)
 
 async def handle_client(websocket):
-    client_id = id(websocket)  # Get a unique ID for the client
+    client_id = id(websocket)
     print(f"New client connected. ID: {client_id}")
     
     loop = asyncio.get_running_loop()
@@ -42,7 +42,6 @@ async def handle_client(websocket):
             try:
                 message_data = json.loads(raw_message)
                 
-                # Check message type
                 if message_data.get('type') == 'ping':
                     print("Received ping from client - continuing")
                     continue
@@ -67,7 +66,6 @@ async def handle_client(websocket):
                     await websocket.send(json.dumps(done_message))
                     print("Stream completed")
                     break
-                print(f"Sending chunk content: {json.loads(chunk).get('content')}")  # chunk is already JSON string
                 await websocket.send(chunk)
     
     except json.JSONDecodeError as e:
@@ -82,10 +80,9 @@ async def handle_client(websocket):
 
 async def main():
     try:
-        # Create routes dictionary with v2 race chat handler
         routes = {
             "/chat": handle_client,
-            "/race-chat-v2": handle_race_client,  # Updated path for v2 handler
+            "/race-chat-v2": handle_race_client,
             "/": handle_client
         }
 
@@ -98,7 +95,7 @@ async def main():
 
         server = await websockets.serve(route_handler, "localhost", 8765)
         print("WebSocket server started on ws://localhost:8765")
-        print("Available endpoints: /, /chat, and /race-chat-v2")  # Updated endpoint list
+        print("Available endpoints: /, /chat, and /race-chat-v2")
         await server.wait_closed()
     except OSError as e:
         print(f"Failed to start server (port may be in use): {str(e)}")
