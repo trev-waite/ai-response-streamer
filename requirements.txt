@@ -1,2 +1,9 @@
 google-genai
 websockets
+# Below for local embedding. Python 3.12 is requied for below. 3.13 and newer if not running local embedding
+faiss-cpu
+numpy==1.26.4
+sentence-transformers
+# sentence-transformers==2.2.2
+# faiss-cpu==1.7.4
+# numpy==1.26.4
