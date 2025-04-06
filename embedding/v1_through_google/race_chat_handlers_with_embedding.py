@@ -6,7 +6,6 @@ import faiss
 import numpy as np
 import pickle
 
-# Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Load precomputed chunks and FAISS index
@@ -26,7 +25,6 @@ async def race_stream_response(prompt, queue, loop):
     try:
         print(f"Processing race chat prompt: {prompt}")
         
-        # Generate embedding for the prompt (assuming embed_content is synchronous)
         prompt_embedding = await loop.run_in_executor(
             None,
             lambda: client.embed_content(model='embedding-model', content=prompt)
@@ -39,14 +37,11 @@ async def race_stream_response(prompt, queue, loop):
             lambda: index.search(np.array([prompt_embedding]).astype('float32'), k)
         )
         
-        # Retrieve relevant chunks safely
         relevant_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]
         context = " ".join(relevant_chunks) if relevant_chunks else "No additional context available."
         
-        # Create enhanced prompt with racing context and file-based information
         enhanced_prompt = f"As a racing expert, based on the following information: {context}, respond to: {prompt}"
-        
-        # Stream the response from the Gemini API
+
         async for chunk in await client.aio.models.generate_content_stream(
             model='gemini-2.0-flash',
             contents=enhanced_prompt
@@ -98,10 +93,8 @@ async def handle_race_client(websocket):
                 continue
 
             queue = asyncio.Queue()
-            # Directly await the async function instead of using run_in_executor
-            await race_stream_response(content, queue, loop)
+            asyncio.create_task(race_stream_response(content, queue, loop))
             
-            # Send response chunks to the client
             while True:
                 chunk = await queue.get()
                 if chunk is None:

@@ -3,7 +3,6 @@ import json
 from google import genai
 import os
 
-# Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Message format from user
@@ -25,10 +24,8 @@ async def race_stream_response(prompt, race_name, queue):
     try:
         print(f"Processing race chat prompt for {race_name}: {prompt}", flush=True)
         
-        # Construct the file path based on race name  race_data_Hungarian_2024_Race
         file_path = f"./race-data/less_data/race_data_{race_name}_2024_Race.txt"
         
-        # Upload the race data file
         file = client.files.upload(file=file_path)
 
         prompt = """You are a racing expert. The uploaded file provides race overview stats at the top, and then all 20 drivers stats by lap. The beginning of each drivers stats is like this
@@ -63,7 +60,6 @@ async def race_stream_response(prompt, race_name, queue):
         Use that to help you find driver specific data. In your answer back don't mention from the provided data, just answer the question. 
         Also if you're giving data back to the user, display in a nice, easy to read, way that also looks good. Feel free to use markup when needed. Prompt: """ + prompt
         
-        # Stream the response with both the prompt and file context
         async for chunk in await client.aio.models.generate_content_stream(
             model='gemini-2.0-flash',
             contents=[prompt, file]

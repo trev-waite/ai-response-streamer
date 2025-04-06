@@ -5,6 +5,8 @@ import os
 import json
 from embedding.v2_local.race_chat_handlers_with_embedding_v2 import handle_race_client
 
+# TODO: Update input andoutput formats to match the new objects
+
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 async def stream_response(prompt, queue, loop):

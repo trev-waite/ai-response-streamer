@@ -19,7 +19,7 @@ def read_chunks(file_path, max_words=500):
     current_word_count = 0
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
-            if not line.strip():  # Skip empty lines
+            if not line.strip():
                 continue
             words = line.split()
             if current_word_count + len(words) <= max_words:
@@ -29,16 +29,15 @@ def read_chunks(file_path, max_words=500):
                 yield " ".join(current_chunk)
                 current_chunk = [line.strip()]
                 current_word_count = len(words)
-        if current_chunk:  # Yield the last chunk if any
+        if current_chunk:
             yield " ".join(current_chunk)
 
 def main():
     # Configuration
-    file_path = 'race-data/race_data_Bahrain_2024_Race-large.txt'  # Replace with your actual file path
+    file_path = 'race-data/race_data_Bahrain_2024_Race-large.txt'
     model_name = 'all-MiniLM-L6-v2'  # Fast and efficient embedding model
     batch_size = 1000  # Number of chunks to embed in one batch
 
-    # Load the embedding model
     print("Loading sentence-transformers model...")
     model = SentenceTransformer(model_name)
 
@@ -53,7 +52,6 @@ def main():
             batch = all_chunks[-batch_size:]
             batch_embeddings = model.encode(batch, show_progress_bar=True)
             embeddings.extend(batch_embeddings)
-    # Handle remaining chunks not fitting in a full batch
     if len(all_chunks) % batch_size != 0:
         batch = all_chunks[-(len(all_chunks) % batch_size):]
         batch_embeddings = model.encode(batch, show_progress_bar=True)

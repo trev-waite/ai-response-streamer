@@ -4,7 +4,6 @@ import pickle
 from google import genai
 import os
 
-# Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Load the large file
@@ -14,7 +13,6 @@ with open('race-data/race_data_Bahrain_2024_Race-large.txt', 'r', encoding='utf-
 # Split into chunks (e.g., by paragraphs) MAY NEED TO UPDATE CHUNCK SPLITTING
 chunks = [chunk.strip() for chunk in text.split('\n\n') if chunk.strip()]
 
-# Generate embeddings
 embeddings = []
 for chunk in chunks:
     embedding = client.models.embed_content(model='text-embedding-004', contents=chunk)
