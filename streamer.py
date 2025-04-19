@@ -8,6 +8,12 @@ from race_chat_handlers_less_data import handle_race_client
 # Configure the Google Gemini API key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+MODEL_MAPPINGS = {
+    '2.5 Pro': 'gemini-2.5-pro-preview-03-25',
+    '2.5 Flash': 'gemini-2.5-flash-preview-04-17',
+    '2.0 Flash': 'gemini-2.0-flash'
+}
+
 # Message format from user
 # MessageFromUser {
 #   role: 'user' | 'ping';
@@ -22,11 +28,11 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 #   timestamp: Date; 
 # }
 
-async def stream_response(prompt, queue):
+async def stream_response(prompt, queue, model_name='gemini-2.0-flash'):
     try:
         print(f"Processing prompt: {prompt}", flush=True)
         async for chunk in await client.aio.models.generate_content_stream(
-            model='gemini-2.0-flash',
+            model=model_name,
             contents=prompt
         ):
             message = {
@@ -69,13 +75,15 @@ async def handle_client(websocket):
                     continue
                 
                 prompt = message_data.get('prompt')
+                model_name = message_data.get('model')
                 print(f"Received prompt from client {client_id}: {prompt}", flush=True)
             except Exception as e:
                 print(f"Invalid message received from client {client_id}: {str(e)}", flush=True)
                 continue
 
             queue = asyncio.Queue()
-            asyncio.create_task(stream_response(prompt, queue))
+            gemini_model_name = MODEL_MAPPINGS.get(model_name, 'gemini-2.0-flash')
+            asyncio.create_task(stream_response(prompt, queue, gemini_model_name))
             
             while True:
                 chunk = await queue.get()

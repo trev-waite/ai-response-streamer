@@ -5,6 +5,12 @@ import os
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+MODEL_MAPPINGS = {
+    '2.5 Pro': 'gemini-2.5-pro-preview-03-25',
+    '2.5 Flash': 'gemini-2.5-flash-preview-04-17',
+    '2.0 Flash': 'gemini-2.0-flash'
+}
+
 # Message format from user
 # MessageFromUser {
 #   role: 'user' | 'ping';
@@ -20,7 +26,7 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 #   timestamp: Date; 
 # }
 
-async def race_stream_response(prompt, race_name, queue):
+async def race_stream_response(prompt, race_name, queue, model_name='gemini-2.0-flash'):
     try:
         print(f"Processing race chat prompt for {race_name}: {prompt}", flush=True)
         
@@ -61,7 +67,7 @@ async def race_stream_response(prompt, race_name, queue):
         Also if you're giving data back to the user, display in a nice, easy to read, way that also looks good. Feel free to use markup when needed. Prompt: """ + prompt
         
         async for chunk in await client.aio.models.generate_content_stream(
-            model='gemini-2.0-flash',
+            model=model_name,
             contents=[prompt, file]
         ):
             message = {
@@ -101,6 +107,7 @@ async def handle_race_client(websocket):
                 
                 prompt = message_data.get('prompt')
                 race_name = message_data.get('race')
+                model_name = message_data.get('model')
                 
                 if not race_name:
                     raise ValueError("Race name not provided in message")
@@ -112,7 +119,8 @@ async def handle_race_client(websocket):
                 continue
 
             queue = asyncio.Queue()
-            asyncio.create_task(race_stream_response(prompt, race_name, queue))
+            gemini_model_name = MODEL_MAPPINGS.get(model_name, 'gemini-2.0-flash')
+            asyncio.create_task(race_stream_response(prompt, race_name, queue, gemini_model_name))
             
             while True:
                 chunk = await queue.get()

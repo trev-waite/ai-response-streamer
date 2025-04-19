@@ -8,16 +8,9 @@ async def test_websocket():
     
     async with websockets.connect(uri) as websocket:
         # Create message following the WebSocketMessage interface
-        # Tell me a bit about how max throttle usage changed throughout the race
-        # What drivers participaded in this race?
-        # What was max's lap 12 sector 1 time, how does it compare to his other laps?
-        # Tell me a bit about Oscars race, and why he did how he did
-        # "Did the weather play a factor in the race, and also how did maxs throttle usage change throughout the race"
-        #  What was max verstapans throttle usage on the 5th lap
-        # Tell me a bit about Oscars race, and why he did how he did, and compare his strategy with leclercs
         message = {
-            "type": "fromClient",
-            "content": "Can you tell me about Piastris throttle usage compared to leclercs",
+            "role": "user",
+            "prompt": "Can you tell me about Piastris throttle usage compared to leclercs",
             "race": "Hungarian",
             "timestamp": int(time.time() * 1000)  # Current time in milliseconds
         }
@@ -34,14 +27,14 @@ async def test_websocket():
                 message_data = json.loads(response)
                 
                 # Handle different message types
-                if message_data["type"] == "done":
+                if message_data.get("role") == "assistant" and message_data.get("isDone"):
                     print("\nStream completed")
                     break
-                elif message_data["type"] == "error":
-                    print(f"\nError: {message_data['content']}")
+                elif message_data.get("role") == "error":
+                    print(f"\nError: {message_data.get('response')}")
                     break
                 else:
-                    print(message_data["content"], end="", flush=True)
+                    print(message_data.get("response", ""), end="", flush=True)
                     
             except websockets.ConnectionClosed:
                 print("\nConnection closed by server")
