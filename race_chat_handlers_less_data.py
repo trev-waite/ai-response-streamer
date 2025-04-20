@@ -28,7 +28,7 @@ MODEL_MAPPINGS = {
 
 async def race_stream_response(prompt, race_name, queue, model_name='gemini-2.0-flash'):
     try:
-        print(f"Processing race chat prompt for {race_name}: {prompt}", flush=True)
+        print(f"Processing race chat prompt for Model: {model_name} Race: {race_name} - {prompt}", flush=True)
         
         file_path = f"./race-data/less_data/race_data_{race_name}_2024_Race.txt"
         
@@ -87,9 +87,9 @@ async def race_stream_response(prompt, race_name, queue, model_name='gemini-2.0-
             "timestamp": None
         }))
         await queue.put(None)
-        print("Race chat stream completed", flush=True)
+        print(f"Race chat stream completed with model: {model_name}", flush=True)
     except Exception as e:
-        await _send_error_message(queue, "Error getting race data from LLM")
+        await _send_error_message(queue, "Error getting race data from LLM", e)
 
 async def handle_race_client(websocket):
     client_id = id(websocket)
@@ -115,7 +115,7 @@ async def handle_race_client(websocket):
                 print(f"Received race chat prompt from client {client_id} for race {race_name}: {prompt}", flush=True)
             except Exception as e:
                 print(f"Invalid message received from race chat client {client_id}: {str(e)}", flush=True)
-                await _send_error_message(queue, "Invalid message format received from client")
+                await _send_error_message(queue, "Invalid message format received from client", e)
                 continue
 
             queue = asyncio.Queue()
@@ -130,12 +130,15 @@ async def handle_race_client(websocket):
     
     except json.JSONDecodeError as e:
         print(f"Invalid JSON received from race chat client {client_id}: {str(e)}", flush=True)
-        await _send_error_message(queue, "Invalid JSON received")
+        await _send_error_message(queue, "Invalid JSON received", e)
     except Exception as e:
         print(f"Unexpected error in race chat handler for client {client_id}: {str(e)}", flush=True)
         await websocket.close(code=1011, reason=str(e))
 
-async def _send_error_message(queue, error_message):
+async def _send_error_message(queue, error_message, e=None):
+    print(f"Sending error message: {error_message}", flush=True)
+    if e:
+        print(f"Exception: {e}", flush=True)
     error_message = {
         "role": "error",
         "response": error_message,
