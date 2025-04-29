@@ -34,7 +34,7 @@ def read_chunks(file_path, max_words=500):
 
 def main():
     # Configuration
-    file_path = 'race-data/race_data_Bahrain_2024_Race-large.txt'
+    file_path = 'race-data-cache/race_data_Bahrain_2024_Race-large.txt'
     model_name = 'all-MiniLM-L6-v2'  # Fast and efficient embedding model
     batch_size = 1000  # Number of chunks to embed in one batch
 
