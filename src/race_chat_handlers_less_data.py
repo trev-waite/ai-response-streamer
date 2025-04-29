@@ -149,7 +149,7 @@ async def handle_race_client(websocket):
                         continue
                 
                 gemini_model_name = MODEL_MAPPINGS.get(model_name, 'gemini-2.0-flash')
-                print(f"Processing race chat prompt from client {client_id}. Race: {normalized_race_name}\n Model: {gemini_model_name}\n Prompt: {prompt}\n", flush=True)
+                print(f"Processing race chat prompt from client {client_id}.\n Race: {normalized_race_name}\n Model: {gemini_model_name}\n Prompt: {prompt}\n", flush=True)
                 
                 # Create a task for processing the response
                 response_task = asyncio.create_task(race_stream_response(prompt, file_path, queue, gemini_model_name))

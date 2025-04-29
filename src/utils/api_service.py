@@ -1,27 +1,58 @@
+import aiohttp
 from typing import Tuple, Optional
 import logging
-from .file_utils import check_race_file_exists
+from .file_utils import check_race_file_exists, get_race_file_name
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def _fetch_race_data(race_name: str) -> Tuple[bool, str]:
+async def _fetch_race_data(race_name: str, year: int = 2024) -> Tuple[bool, str]:
     """
     Fetch race data from the F1 API for a specific race.
-    This is a placeholder that will be implemented later with actual API details.
+    Makes a GET request to http://localhost:8000/race/{year}/{race}
     
     Args:
-        race_name: The normalized race name to fetch data for
+        race_name: The normalized race name to fetch data for (format: RaceName_Year_Race)
+        year: The year. Defaults to 2024.
         
     Returns:
         Tuple[bool, str]: (success, error_message)
             - success: Whether the data was successfully fetched and saved
             - error_message: Error message if unsuccessful, empty string if successful
     """
-    # TODO: Implement actual API call and data processing
-    # This will be implemented later with proper API endpoints and authentication
-    logger.info(f"API call placeholder for fetching race data for {race_name}")
-    return False, "API implementation pending"
+    try:
+        url = f"http://localhost:8000/race/{year}/{race_name}"
+        logger.info(f"Fetching race data from: {url}")
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    return False, f"API request failed with status {response.status}"
+                
+                # Verify we received the expected content type
+                content_type = response.headers.get('content-type', '')
+                if 'text/plain' not in content_type:
+                    return False, f"Unexpected content type: {content_type}"
+                
+                
+                cache_dir = os.path.join("src", "race-data-cache", "less_data")
+                os.makedirs(cache_dir, exist_ok=True)
+                
+                # Save the response content to a file
+                file_path = os.path.join(cache_dir, get_race_file_name(race_name))
+                content = await response.read()
+                
+                with open(file_path, 'wb') as f:
+                    f.write(content)
+                    
+                logger.info(f"Successfully saved race data to: {file_path}")
+                return True, ""
+                
+    except aiohttp.ClientError as e:
+        return False, f"HTTP request failed: {str(e)}"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
 
 async def fetch_new_race_data(normalized_race_name: str) -> Tuple[bool, str, Optional[str]]:
     """
