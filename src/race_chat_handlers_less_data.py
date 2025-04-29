@@ -2,8 +2,9 @@ import asyncio
 import json
 from google import genai
 import os
+from utils.file_utils import check_race_file_exists
 from utils.input_validator import normalize_race_name
-from utils.api_service import check_race_data_availability, fetch_new_race_data
+from utils.api_service import fetch_new_race_data
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -129,7 +130,7 @@ async def handle_race_client(websocket):
                     continue
                 
                 # First check if we have the data locally
-                file_exists, file_path = check_race_data_availability(normalized_race_name)
+                file_exists, file_path = check_race_file_exists(normalized_race_name)
                 if not file_exists:
                     await queue.put(json.dumps({
                         "role": "assistant",

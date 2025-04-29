@@ -23,21 +23,6 @@ async def _fetch_race_data(race_name: str) -> Tuple[bool, str]:
     logger.info(f"API call placeholder for fetching race data for {race_name}")
     return False, "API implementation pending"
 
-def check_race_data_availability(normalized_race_name: str) -> Tuple[bool, Optional[str]]:
-    """
-    Check if we have the race data file locally.
-    
-    Args:
-        normalized_race_name: The validated and normalized race name
-        
-    Returns:
-        Tuple[bool, Optional[str]]: (file_exists, file_path)
-            - file_exists: Whether the file exists locally
-            - file_path: Path to the race data file if it exists, None if it doesn't
-    """
-    file_exists, file_path = check_race_file_exists(normalized_race_name)
-    return file_exists, file_path if file_exists else None
-
 async def fetch_new_race_data(normalized_race_name: str) -> Tuple[bool, str, Optional[str]]:
     """
     Fetches new race data from the F1 API and saves it locally.
