@@ -108,6 +108,8 @@ async def _monitor_progress(websocket, queue, normalized_race_name):
             "Formatting race data for response...",
             "Generating response...",
             "Collecting final race statistics...",
+            "Getting more of the stuff...",
+            "Wrapping things up...",
             "Finalizing response... Almost there!"
         ]
         
