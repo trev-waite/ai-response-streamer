@@ -14,7 +14,7 @@ def get_race_file_name(race_name: str, year: int = 2024) -> str:
     formatted_race_name = race_name.replace(" ", "-")
     return f"race_data_{formatted_race_name}_{year}_Race.txt"
 
-def check_race_file_exists(normalized_race_name: str) -> Tuple[bool, str]:
+def check_race_file_exists(normalized_race_name: str, year: int) -> Tuple[bool, str]:
     """
     Check if a race data file exists for the given normalized race name.
     
@@ -27,7 +27,7 @@ def check_race_file_exists(normalized_race_name: str) -> Tuple[bool, str]:
             - file_path: The full path to the file if it exists, empty string if it doesn't
     """
     # Construct the expected file path
-    file_name = get_race_file_name(normalized_race_name)
+    file_name = get_race_file_name(normalized_race_name, year)
     file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
                             "race-data-cache", "less_data", file_name)
     

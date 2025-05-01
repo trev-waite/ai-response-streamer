@@ -3,8 +3,9 @@ import json
 from google import genai
 import os
 from utils.file_utils import check_race_file_exists
-from utils.input_validator import normalize_race_name
+from utils.input_validator import validate_inputs
 from utils.api_service import fetch_new_race_data
+import websockets.exceptions
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -94,86 +95,160 @@ async def race_stream_response(prompt, data_file_path, queue, model_name='gemini
             "timestamp": None
         }))
         await queue.put(None)
-        print(f"Race chat stream completed with model: {model_name}", flush=True)
     except Exception as e:
         await _send_error_message(queue, "Error getting race data from LLM", e)
+
+async def _monitor_progress(websocket, queue, normalized_race_name):
+    """Monitor progress and send updates to the client"""
+    try:
+        progress_messages = [
+            f"Fetching race data for {normalized_race_name}. This can take several minutes...",
+            "Still fetching race data...",
+            "Processing race data...",
+            "Formatting race data for response...",
+            "Generating response...",
+            "Collecting final race statistics...",
+            "Finalizing response... Almost there!"
+        ]
+        
+        for message in progress_messages:
+            try:  # Send a new message every minute
+                update = {
+                    "role": "assistant",
+                    "response": message,
+                    "isDone": False,
+                    "isGettingRaceData": True,
+                    "timestamp": None
+                }
+                try:
+                    await websocket.send(json.dumps(update))
+                    await asyncio.sleep(75)
+                except websockets.exceptions.ConnectionClosed:
+                    return
+            except asyncio.CancelledError:
+                return
+    except Exception as e:
+        print(f"Error in progress monitoring: {str(e)}", flush=True)
 
 async def handle_race_client(websocket):
     client_id = id(websocket)
     print(f"New race chat client connected. ID: {client_id}", flush=True)
+    current_queue = None
+    current_processor = None
     
     try:
         while True:
-            raw_message = await websocket.recv()
-            queue = asyncio.Queue()
-            
             try:
-                message_data = json.loads(raw_message)
+                raw_message = await websocket.recv()
                 
-                if message_data.get('role') == 'ping':
-                    print("Received ping from race chat client - continuing", flush=True)
-                    continue
-                
-                prompt = message_data.get('prompt')
-                race_name = message_data.get('race')
-                model_name = message_data.get('model')
-
-                print(f"Received race chat prompt from client {client_id}: {prompt}", flush=True)
-                
-                if not race_name:
-                    raise ValueError("Race name not provided in message")
-                
-                # Validate the race name
-                is_valid, error_message, normalized_race_name = normalize_race_name(race_name)
-                if not is_valid:
-                    await _send_error_message(queue, f"Invalid race name: {error_message}")
-                    continue
-                
-                # First check if we have the data locally
-                file_exists, file_path = check_race_file_exists(normalized_race_name)
-                if not file_exists:
-                    await queue.put(json.dumps({
-                        "role": "assistant",
-                        "response": f"Fetching race data for {normalized_race_name}. This may take a moment...",
-                        "isDone": False,
-                        "isGettingRaceData": True,
-                        "timestamp": None
-                    }))
+                try:
+                    # Clean up previous queue and processor if they exist
+                    if current_queue and current_processor:
+                        await current_queue.put(None)
+                        await current_processor
                     
-                    # Create a task for fetching race data
-                    fetch_task = asyncio.create_task(fetch_new_race_data(normalized_race_name))
-                    success, error_message, file_path = await fetch_task
+                    current_queue = asyncio.Queue()
                     
-                    if not success:
-                        await _send_error_message(queue, error_message)
+                    message_data = json.loads(raw_message)
+                    
+                    if message_data.get('role') == 'ping':
+                        print("Received ping from race chat client - continuing", flush=True)
                         continue
-                
-                gemini_model_name = MODEL_MAPPINGS.get(model_name, 'gemini-2.0-flash')
-                print(f"Processing race chat prompt from client {client_id}.\n Race: {normalized_race_name}\n Model: {gemini_model_name}\n Prompt: {prompt}\n", flush=True)
-                
-                # Create a task for processing the response
-                response_task = asyncio.create_task(race_stream_response(prompt, file_path, queue, gemini_model_name))
-                
-                while True:
-                    chunk = await queue.get()
-                    if chunk is None:
-                        break
-                    await websocket.send(chunk)
                     
-                # Ensure the response task is completed
-                await response_task
-                
-            except json.JSONDecodeError as e:
-                print(f"Invalid JSON received from race chat client {client_id}: {str(e)}", flush=True)
-                await _send_error_message(queue, "Invalid JSON received", e)
-            except Exception as e:
-                print(f"Invalid message received from race chat client {client_id}: {str(e)}", flush=True)
-                await _send_error_message(queue, "Invalid message format received from client", e)
-                continue
-    
+                    prompt = message_data.get('prompt')
+                    race_name = message_data.get('race')
+                    race_year = message_data.get('year', 2024)  # Default to 2024
+                    model_name = message_data.get('model')
+
+                    print(f"Received race chat prompt from client {client_id}: {prompt}", flush=True)
+                    
+                    if not race_name:
+                        raise ValueError("Race name not provided in message")
+                    
+                    # Validate inputs
+                    is_valid, error_message, validated_data = validate_inputs(race_year, race_name)
+                    if not is_valid:
+                        await _send_error_message(current_queue, f"Invalid input: {error_message}")
+                        await current_queue.put(None)
+                        await current_processor
+                        continue
+                    
+                    normalized_race_name = validated_data['race_name']
+                    validated_year = validated_data['year']
+                    
+                    print(f"Processing request from client {client_id}\n Race: {normalized_race_name} \n Year: {validated_year} \n Model: {model_name}", flush=True)
+                    
+                    # First check if we have the data locally
+                    file_exists, file_path = check_race_file_exists(normalized_race_name, validated_year)
+                    if not file_exists:
+                        current_processor = asyncio.create_task(process_messages(websocket, current_queue))
+                        fetch_task = asyncio.create_task(fetch_new_race_data(normalized_race_name, validated_year))
+                        progress_task = asyncio.create_task(_monitor_progress(websocket, current_queue, normalized_race_name))
+                        
+                        try:
+                            success, error_message, file_path = await fetch_task
+                            progress_task.cancel()
+                            progress_task.cancel()
+                            current_processor.cancel()
+                            
+                            if not success:
+                                await _send_error_message(current_queue, error_message)
+                                await current_queue.put(None)
+                                await current_processor
+                                continue
+                                
+                        except Exception as e:
+                            progress_task.cancel()
+                            await _send_error_message(current_queue, str(e))
+                            await current_queue.put(None)
+                            await current_processor
+                            continue
+                    
+                    # Reset queue and processor for Gemini response
+                    current_queue = asyncio.Queue()
+                    current_processor = asyncio.create_task(process_messages(websocket, current_queue))
+                    gemini_model_name = MODEL_MAPPINGS.get(model_name, 'gemini-2.0-flash')
+                    response_task = asyncio.create_task(race_stream_response(prompt, file_path, current_queue, gemini_model_name))
+
+                    print(f"Race chat stream completed with for Client: {client_id}", flush=True)
+                    
+                    await response_task
+                    await current_queue.put(None)
+                    await current_processor
+                    
+                except json.JSONDecodeError as e:
+                    print(f"Invalid JSON received from race chat client {client_id}: {str(e)}", flush=True)
+                    await _send_error_message(current_queue, "Invalid JSON received", e)
+                    await current_queue.put(None)
+                    await current_processor
+                except Exception as e:
+                    print(f"Invalid message received from race chat client {client_id}: {str(e)}", flush=True)
+                    await _send_error_message(current_queue, "Invalid message format received from client", e)
+                    await current_queue.put(None)
+                    await current_processor
+                    continue
+            except websockets.exceptions.ConnectionClosed:
+                print(f"Client {client_id} disconnected", flush=True)
+                break
     except Exception as e:
         print(f"Unexpected error in race chat handler for client {client_id}: {str(e)}", flush=True)
+        if current_queue and current_processor:
+            await current_queue.put(None)
+            await current_processor
         await websocket.close(code=1011, reason=str(e))
+
+async def process_messages(websocket, queue):
+    try:
+        while True:
+            message = await queue.get()
+            if message is None:
+                break
+            try:
+                await websocket.send(message)
+            except websockets.exceptions.ConnectionClosed:
+                break
+    except asyncio.CancelledError:
+        pass
 
 async def _send_error_message(queue, error_message, e=None):
     print(f"Sending error message: {error_message}", flush=True)

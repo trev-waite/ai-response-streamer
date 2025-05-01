@@ -11,7 +11,7 @@ async def test_websocket():
         message = {
             "role": "user",
             "prompt": "Can you tell me about Piastris throttle usage compared to leclercs",
-            "race": "Las Vegas",
+            "race": "Brazil",
             "timestamp": int(time.time() * 1000)  # Current time in milliseconds
         }
         
