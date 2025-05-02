@@ -1,6 +1,7 @@
 import asyncio
 import json
 from google import genai
+from google.genai.chats import AsyncChat
 import os
 from utils.file_utils import check_race_file_exists
 from utils.input_validator import validate_inputs
@@ -30,11 +31,9 @@ MODEL_MAPPINGS = {
 #   timestamp: Date; 
 # }
 
-async def race_stream_response(prompt, data_file_path, queue, model_name='gemini-2.0-flash'):
+async def race_stream_response(prompt, chat: AsyncChat, queue):
     try:   
-        file = client.files.upload(file=data_file_path)
-
-        prompt = """You are a racing expert. The uploaded file provides race overview stats at the top, and then all 20 drivers stats by lap. The beginning of each drivers stats is like this
+        prompt = """You are a racing expert. The uploaded file provides race overview stats at the top (), and then all 20 drivers stats by lap. The beginning of each drivers stats is like this
         DRIVER: Driver name (#driver number)
         Team: Team name
         --------------------------------------------------
@@ -72,10 +71,7 @@ async def race_stream_response(prompt, data_file_path, queue, model_name='gemini
         Use that to help you find driver specific data. In your answer back don't mention from the provided data, just answer the question. 
         Also if you're giving data back to the user, display in a nice, easy to read, way that also looks good. Feel free to use markup when needed. Prompt: """ + prompt
         
-        async for chunk in await client.aio.models.generate_content_stream(
-            model=model_name,
-            contents=[prompt, file]
-        ):
+        async for chunk in await chat.send_message_stream(prompt):
             message = {
                 "role": "assistant",
                 "response": chunk.text,
@@ -85,8 +81,6 @@ async def race_stream_response(prompt, data_file_path, queue, model_name='gemini
             }
             await queue.put(json.dumps(message))
             
-        # Cleanup: Delete the uploaded file
-        client.files.delete(name=file.name)
         await queue.put(json.dumps({
             "role": "assistant",
             "response": "done message",
@@ -137,6 +131,9 @@ async def handle_race_client(websocket):
     print(f"New race chat client connected. ID: {client_id}", flush=True)
     current_queue = None
     current_processor = None
+    current_model = 'gemini-2.0-flash'
+    current_race_file_path = ''
+    first_chat = True
     
     try:
         while True:
@@ -177,6 +174,8 @@ async def handle_race_client(websocket):
                     
                     normalized_race_name = validated_data['race_name']
                     validated_year = validated_data['year']
+
+
                     
                     print(f"Processing request from client {client_id}\n Race: {normalized_race_name} \n Year: {validated_year} \n Model: {model_name}", flush=True)
                     
@@ -209,7 +208,23 @@ async def handle_race_client(websocket):
                     current_queue = asyncio.Queue()
                     current_processor = asyncio.create_task(process_messages(websocket, current_queue))
                     gemini_model_name = MODEL_MAPPINGS.get(model_name, 'gemini-2.0-flash')
-                    response_task = asyncio.create_task(race_stream_response(prompt, file_path, current_queue, gemini_model_name))
+                    if (first_chat):
+                        current_model = gemini_model_name
+                        current_race_file_path = file_path
+                        first_chat = False
+                        client.files.upload(file=current_race_file_path)
+                        chat = client.aio.chats.create(model=current_model)
+                    if (not first_chat and current_model != gemini_model_name):
+                        current_model = gemini_model_name
+                        chat = client.aio.chats.create(model=current_model)
+                        #  Do I need to upload the file again?
+                    if (not first_chat and current_race_file_path != file_path):
+                        client.files.delete(name=current_race_file_path)
+                        current_race_file_path = file_path
+                        client.files.upload(file=current_race_file_path)
+
+
+                    response_task = asyncio.create_task(race_stream_response(prompt, chat, current_queue))
 
                     print(f"Race chat stream completed with for Client: {client_id}", flush=True)
                     
