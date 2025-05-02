@@ -190,7 +190,6 @@ async def handle_race_client(websocket):
                         try:
                             success, error_message, file_path = await fetch_task
                             progress_task.cancel()
-                            progress_task.cancel()
                             current_processor.cancel()
                             
                             if not success:

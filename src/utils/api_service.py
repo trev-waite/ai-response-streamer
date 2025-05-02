@@ -40,11 +40,6 @@ async def _fetch_race_data(race_name: str, year: int = 2024) -> Tuple[bool, str]
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url) as response:
                     if response.status != 200:
-                        if attempt < MAX_RETRIES - 1:
-                            delay = RETRY_DELAYS[attempt]
-                            logger.warning(f"Request failed, retrying in {delay} seconds...")
-                            await asyncio.sleep(delay)
-                            continue
                         return False, f"API request failed with status {response.status}"
                     
                     # Verify we received the expected content type
