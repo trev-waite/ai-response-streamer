@@ -7,7 +7,7 @@ import os
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Load the large file
-with open('race-data/race_data_Bahrain_2024_Race-large.txt', 'r', encoding='utf-8') as f:
+with open('race-data-cache/race_data_Bahrain_2024_Race-large.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
 # Split into chunks (e.g., by paragraphs) MAY NEED TO UPDATE CHUNCK SPLITTING
